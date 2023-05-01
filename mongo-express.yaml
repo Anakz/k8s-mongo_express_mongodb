@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-express
+  labels:
+    app: mongo-express
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo-express
+  template:
+    metadata:
+      labels:
+        app: mongo-express
+    spec:
+      containers:
+      - name: mongo-express
+        image: mongo-express
+        ports:
+        - containerPort: 8081
+        env:
+        - name: ME_CONFIG_MONGODB_ADMINUSERNAME
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret # name of the secret
+              key: mongo-root-username # data in the secret
+        - name: ME_CONFIG_MONGODB_ADMINPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret # name of the secret
+              key: mongo-root-password # data in the secret
+        - name: ME_CONFIG_MONGODB_SERVER # from a ConfigMap which is en external configuration, centralized, reused by other component
+          valueFrom:
+            configMapKeyRef:
+              name: mongodb-configmap # name of the ConfigMap
+              key: database_url # data in the ConfigMap
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-express-service
+spec:
+  selector:
+    app: mongo-express
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      port: 8081 # service port
+      targetPort: 8081 # containerPort of Deployment, this two 8081 can be different
+      nodePort: 30000 # must be between 30000-32767 => port you need to put into browser
